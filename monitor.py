@@ -42,10 +42,18 @@ META_PRICE = re.compile(
 TEXT_PRICE = re.compile(r"\$\s?([0-9][0-9,]*\.?[0-9]{0,2})")
 LAUNCH_HREF = re.compile(r'href=["\'](/en-US/launch/[a-z0-9\-]+)["\']', re.I)
 
+# "launch closed" / "closed on" matter: a closed EQL page still carries
+# "Pre-Order" in the PRODUCT TITLE. Treating that as a buy signal reported a
+# launch that had ended two weeks earlier. Title text is not a button.
 SOLD_OUT = ["sold out", "out of stock", "item isn't available", "notify me",
-            "currently unavailable", "coming soon", "back in stock soon"]
-BUYABLE = ["add to cart", "buy now", "enter now", "enter for a chance",
-           "eql entry", "entry window", "pre order", "pre-order", "add to bag"]
+            "currently unavailable", "coming soon", "back in stock soon",
+            "launch closed", "closed on", "launch has now closed",
+            "has now closed", "entries closed"]
+
+# Real, clickable actions only. "pre order" was removed deliberately — it
+# appears in product names, not just buttons.
+BUYABLE = ["add to cart", "buy now", "enter now", "enter launch",
+           "enter for a chance", "add to bag", "cancel my entry"]
 
 
 def log(m):
@@ -145,6 +153,47 @@ def money(v):
     return f"${v:,.0f}" if v is not None else "price unknown"
 
 
+def scan_live_index(cfg):
+    """Read Topps' launch index and return only launches shown as LIVE.
+
+    This page is authoritative in a way product pages are not: a closed
+    launch simply isn't listed here, and live ones carry an "Enter launch"
+    button plus a closing countdown. Reading it removes the guesswork that
+    made a July 28 launch look open in August.
+    """
+    d = cfg.get("discovery", {})
+    html = fetch(d.get("index_url", ""))
+    if not html:
+        return []
+    # Truncate the HTML itself, not just the cleaned text — the link regex
+    # runs against HTML, so cutting only the text left past launches visible.
+    low_html = html.lower()
+    for cutoff in ("past launches", "closed launches", "previous launches",
+                   "recent launches"):
+        i = low_html.find(cutoff)
+        if i != -1:
+            html = html[:i]
+            low_html = low_html[:i]
+            break
+
+    if "live launches" not in low_html:
+        # No live section at all means nothing is open right now.
+        return []
+
+    keep = set(d.get("must_contain", []))
+    drop = set(d.get("must_not_contain", []))
+    live = []
+    for m in LAUNCH_HREF.finditer(html):
+        slug = m.group(1)
+        low = slug.lower()
+        if keep and not any(k in low for k in keep):
+            continue
+        if any(k in low for k in drop):
+            continue
+        live.append("https://launches.topps.com" + slug)
+    return sorted(set(live))
+
+
 def discover(cfg, known_urls):
     """Scrape Topps' launch index for new basketball products."""
     d = cfg.get("discovery", {})
@@ -179,6 +228,11 @@ def main():
     products = list(cfg.get("products", []))
     known = {src["url"] for p in products for src in p["sources"]}
 
+    # Launches listed as live on the index are trusted over page-text
+    # guessing. Anything not on that list cannot be a live EQL window.
+    live_now = set(scan_live_index(cfg))
+    log(f"Live basketball launches on index: {len(live_now)}")
+
     # Auto-pick-up of new basketball launches, so the list doesn't go stale.
     for url in discover(cfg, known):
         slug = url.rsplit("/", 1)[-1].replace("-", " ").title()
@@ -202,6 +256,12 @@ def main():
                 continue
             text = clean(html)
             avail, why = is_available(text)
+            if "launches.topps.com" in src["url"]:
+                if src["url"] in live_now:
+                    avail, why = True, "live on Topps launch index"
+                elif live_now:
+                    # Index loaded fine and this launch wasn't on it.
+                    avail, why = False, "not listed as live"
             # Band generously; msrp filtering happens after.
             price, how = extract_price(html, text, lo_msrp * 0.5, hi_msrp * 3)
             readings.append({**src, "available": avail, "why": why,
