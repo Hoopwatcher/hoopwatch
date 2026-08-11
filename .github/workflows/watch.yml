@@ -27,9 +27,6 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python monitor.py
 
-      # Saving notes must never fail the run. If two runs overlap, one loses
-      # the race to push — that is harmless, so retry a few times and then
-      # give up quietly rather than reporting a red X for a healthy check.
       - name: Save what it saw
         continue-on-error: true
         run: |
@@ -46,9 +43,8 @@ jobs:
               echo "Saved."
               exit 0
             fi
-            echo "Push rejected (attempt $i) - pulling and retrying."
             git pull --rebase --autostash || true
             sleep 5
           done
-          echo "Could not save notes this run. The check itself was fine."
+          echo "Could not save this run. The check itself was fine."
           exit 0
