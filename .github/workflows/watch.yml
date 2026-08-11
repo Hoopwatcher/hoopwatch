@@ -20,19 +20,35 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Check for buyable boxes
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python monitor.py
+
+      # Saving notes must never fail the run. If two runs overlap, one loses
+      # the race to push — that is harmless, so retry a few times and then
+      # give up quietly rather than reporting a red X for a healthy check.
       - name: Save what it saw
+        continue-on-error: true
         run: |
           git config user.name "hoopwatch"
           git config user.email "actions@github.com"
-          git add state.json products.json
+          git add state.json products.json 2>/dev/null || true
           if git diff --staged --quiet; then
-            echo "nothing changed"
-          else
-            git commit -m "check: $(date -u +%Y-%m-%dT%H:%MZ)"
-            git push
+            echo "Nothing changed."
+            exit 0
           fi
+          git commit -m "check: $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            if git push; then
+              echo "Saved."
+              exit 0
+            fi
+            echo "Push rejected (attempt $i) - pulling and retrying."
+            git pull --rebase --autostash || true
+            sleep 5
+          done
+          echo "Could not save notes this run. The check itself was fine."
+          exit 0
