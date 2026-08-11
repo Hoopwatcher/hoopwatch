@@ -1,0 +1,38 @@
+name: hoopwatch
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hoopwatch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check for buyable boxes
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python monitor.py
+      - name: Save what it saw
+        run: |
+          git config user.name "hoopwatch"
+          git config user.email "actions@github.com"
+          git add state.json products.json
+          if git diff --staged --quiet; then
+            echo "nothing changed"
+          else
+            git commit -m "check: $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
