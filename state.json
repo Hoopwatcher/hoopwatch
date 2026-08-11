@@ -1,0 +1,31 @@
+{
+  "Topps Chrome Black Basketball \u2014 Hobby :: Topps (official)": {
+    "available": true,
+    "buy": true,
+    "price": 349.99
+  },
+  "Topps Chrome Black Basketball \u2014 Sealed Case :: Topps (official)": {
+    "available": true,
+    "buy": true,
+    "price": 2799.99
+  },
+  "Topps Chrome Update Basketball \u2014 Hobby :: Topps (official)": {
+    "available": false,
+    "buy": false,
+    "price": 549.99
+  },
+  "Topps Chrome Update Basketball \u2014 Jumbo :: MyExtraCards": {
+    "available": true,
+    "buy": false,
+    "price": 2249.95
+  },
+  "Topps Chrome Update Basketball \u2014 Jumbo :: Topps (official)": {
+    "available": false,
+    "buy": false,
+    "price": 1099.99
+  },
+  "_learned_msrp": {
+    "Topps Chrome Black Basketball \u2014 Hobby": 349.99,
+    "Topps Chrome Black Basketball \u2014 Sealed Case": 2799.99
+  }
+}
