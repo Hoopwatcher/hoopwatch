@@ -1,0 +1,49 @@
+{
+  "_comment": "Basketball boxes only. msrp: null means 'learn it from Topps' own store' — whatever Topps charges IS msrp. Set it manually only if you know better.",
+  "settings": {
+    "msrp_min": 300,
+    "msrp_max": 4000,
+    "max_over_msrp_pct": 15,
+    "min_reseller_gap_pct": 20
+  },
+  "products": [
+    {
+      "name": "Topps Chrome Update Basketball — Jumbo",
+      "msrp": 1080.00,
+      "sources": [
+        {"label": "Topps (official)", "url": "https://launches.topps.com/en-US/launch/2025-26-topps-chromer-updates-basketball-jumbo-box", "role": "msrp"},
+        {"label": "Dave & Adam's", "url": "https://www.dacardworld.com/sports-cards/2025-26-topps-chrome-update-basketball-hobby-jumbo-box", "role": "market"},
+        {"label": "MyExtraCards", "url": "https://myextracards.com/shop/2025-26-topps-chrome-update-series-basketball-jumbo-box-pre-sale/", "role": "market"}
+      ]
+    },
+    {
+      "name": "Topps Chrome Update Basketball — Hobby",
+      "msrp": 549.99,
+      "sources": [
+        {"label": "Topps (official)", "url": "https://launches.topps.com/en-US/launch/2025-26-topps-chromer-updates-basketball-hobby-box", "role": "msrp"},
+        {"label": "Dave & Adam's", "url": "https://www.dacardworld.com/sports-cards/2025-26-topps-chrome-update-basketball-hobby-box", "role": "market"},
+        {"label": "Steel City", "url": "https://www.steelcitycollectibles.com/i/2025-26-topps-chrome-update-series-basketball-hobby-box", "role": "market"}
+      ]
+    },
+    {
+      "name": "Topps Chrome Black Basketball — Hobby",
+      "msrp": null,
+      "sources": [
+        {"label": "Topps (official)", "url": "https://launches.topps.com/en-US/launch/2025-26-topps-chrome-black-basketball-hobby-box-pre-order", "role": "msrp"}
+      ]
+    },
+    {
+      "name": "Topps Chrome Black Basketball — Sealed Case",
+      "msrp": null,
+      "sources": [
+        {"label": "Topps (official)", "url": "https://launches.topps.com/en-US/launch/2025-26-topps-chrome-black-basketball-hobby-box-sealed-case-pre-order", "role": "msrp"}
+      ]
+    }
+  ],
+  "discovery": {
+    "enabled": true,
+    "index_url": "https://launches.topps.com/en-US/launch",
+    "must_contain": ["basketball"],
+    "must_not_contain": ["baseball", "football", "soccer", "hockey", "ufc", "wwe", "f1", "formula", "star-wars", "pokemon", "wnba"]
+  }
+}
