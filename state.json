@@ -14,6 +14,11 @@
     "buy": false,
     "price": 2799.99
   },
+  "Topps Chrome Update Basketball \u2014 Hobby :: Dave & Adam's": {
+    "available": true,
+    "buy": false,
+    "price": 1129.95
+  },
   "Topps Chrome Update Basketball \u2014 Hobby :: Steel City": {
     "available": false,
     "buy": false,
@@ -45,7 +50,6 @@
     "https://launches.topps.com/en-US/launch/2025-26-topps-definitive-basketball-hobby-box-pre-order"
   ],
   "_failing": [
-    "Topps Chrome Update Basketball \u2014 Hobby :: Dave & Adam's",
     "Topps Chrome Update Basketball \u2014 Hobby :: Steel City"
   ],
   "_heartbeat": "2026-08-18T15:49:35+00:00",
