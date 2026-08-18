@@ -11,7 +11,18 @@ Core idea: Topps' own store sells at MSRP. Resellers don't. So:
 Sends Telegram alerts. Buy alerts only — no chatter.
 Runs unattended on a schedule; state.json makes it alert on change only.
 
+CHANGES IN THIS VERSION
+  1. Silence now means something. A source that starts failing sends you a
+     message, and so does one that recovers. A weekly "still alive" note
+     confirms the pipe works even when nothing is for sale.
+  2. Browser-shaped requests, to get past the 403 blocks from Dave & Adam's
+     and Steel City. Headers only — no extra libraries.
+  3. MSRP is never learned from loose page text, only from the store's own
+     structured product data. A shipping fee can no longer become your
+     baseline and quietly bend every buy limit built on it.
+
 Env: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+     HOOPWATCH_TEST=1  -> send one test message and exit (proves Telegram)
 """
 
 import datetime
@@ -29,9 +40,35 @@ STATE_FILE = os.path.join(HERE, "state.json")
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+TEST_MODE = os.environ.get("HOOPWATCH_TEST", "").strip() == "1"
+
+HEARTBEAT_DAYS = 7
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/125.0 Safari/537.36")
+      "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+
+# A bare urllib request looks nothing like a browser, which is what most
+# storefront blockers key on. These headers are what a real Chrome tab sends.
+# Accept-Encoding is pinned to identity on purpose: urllib will not unzip a
+# compressed reply, and asking for gzip here would hand us binary garbage
+# that reads as an empty page.
+BROWSER_HEADERS = {
+    "User-Agent": UA,
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,"
+               "image/avif,image/webp,*/*;q=0.8"),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "identity",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Sec-CH-UA": '"Chromium";v="127", "Not)A;Brand";v="99"',
+    "Sec-CH-UA-Mobile": "?0",
+    "Sec-CH-UA-Platform": '"macOS"',
+    "Cache-Control": "max-age=0",
+    "Connection": "keep-alive",
+}
 
 # Structured product data is checked before visible text. On a storefront the
 # biggest dollar figure on the page is often a related product, not this one.
@@ -61,6 +98,10 @@ def log(m):
     print(f"[{ts}] {m}", flush=True)
 
 
+def now_utc():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
 def load_json(p, d):
     try:
         with open(p, encoding="utf-8") as f:
@@ -76,19 +117,29 @@ def save_json(p, d):
 
 
 def fetch(url, retries=3):
+    """Return (html, error). error is None on success, else a short reason.
+
+    Returning the reason instead of swallowing it is what makes a blocked
+    site distinguishable from a quiet one further up.
+    """
     last = None
     for i in range(retries):
         try:
-            req = urllib.request.Request(url, headers={
-                "User-Agent": UA, "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "en-US,en;q=0.9"})
+            req = urllib.request.Request(url, headers=dict(BROWSER_HEADERS))
             with urllib.request.urlopen(req, timeout=30) as r:
-                return r.read().decode("utf-8", errors="ignore")
+                return r.read().decode("utf-8", errors="ignore"), None
+        except urllib.error.HTTPError as e:
+            last = f"HTTP {e.code}"
+            # A refusal is a decision, not a hiccup. Retrying an ordinary 403
+            # just wastes time, but 429 and 5xx are worth another go.
+            if e.code in (401, 403, 404, 410):
+                break
+            time.sleep(2 * (i + 1))
         except Exception as e:  # noqa: BLE001
-            last = e
+            last = type(e).__name__
             time.sleep(2 * (i + 1))
     log(f"    fetch failed: {last}")
-    return None
+    return None, last or "unknown"
 
 
 def clean(html):
@@ -135,7 +186,7 @@ def notify(msg):
     if not BOT_TOKEN or not CHAT_ID:
         log("  !! no telegram creds; printing")
         print(msg)
-        return
+        return False
     data = urllib.parse.urlencode({
         "chat_id": CHAT_ID, "text": msg, "parse_mode": "HTML",
         "disable_web_page_preview": "false"}).encode()
@@ -145,65 +196,23 @@ def notify(msg):
         with urllib.request.urlopen(req, timeout=20) as r:
             r.read()
         log("  -> sent")
+        return True
     except Exception as e:  # noqa: BLE001
         log(f"  !! telegram failed: {e}")
+        return False
 
 
 def money(v):
     return f"${v:,.0f}" if v is not None else "price unknown"
 
 
-def scan_live_index(cfg):
-    """Read Topps' launch index and return only launches shown as LIVE.
-
-    This page is authoritative in a way product pages are not: a closed
-    launch simply isn't listed here, and live ones carry an "Enter launch"
-    button plus a closing countdown. Reading it removes the guesswork that
-    made a July 28 launch look open in August.
-    """
+def discover(cfg, known_urls, index_html):
+    """Pick up new basketball launches from the index we already fetched."""
     d = cfg.get("discovery", {})
-    html = fetch(d.get("index_url", ""))
-    if not html:
-        return []
-    # Truncate the HTML itself, not just the cleaned text — the link regex
-    # runs against HTML, so cutting only the text left past launches visible.
-    low_html = html.lower()
-    for cutoff in ("past launches", "closed launches", "previous launches",
-                   "recent launches"):
-        i = low_html.find(cutoff)
-        if i != -1:
-            html = html[:i]
-            low_html = low_html[:i]
-            break
-
-    if "live launches" not in low_html:
-        # No live section at all means nothing is open right now.
-        return []
-
-    keep = set(d.get("must_contain", []))
-    drop = set(d.get("must_not_contain", []))
-    live = []
-    for m in LAUNCH_HREF.finditer(html):
-        slug = m.group(1)
-        low = slug.lower()
-        if keep and not any(k in low for k in keep):
-            continue
-        if any(k in low for k in drop):
-            continue
-        live.append("https://launches.topps.com" + slug)
-    return sorted(set(live))
-
-
-def discover(cfg, known_urls):
-    """Scrape Topps' launch index for new basketball products."""
-    d = cfg.get("discovery", {})
-    if not d.get("enabled"):
-        return []
-    html = fetch(d["index_url"])
-    if not html:
+    if not d.get("enabled") or not index_html:
         return []
     found = []
-    for m in LAUNCH_HREF.finditer(html):
+    for m in LAUNCH_HREF.finditer(index_html):
         slug = m.group(1)
         low = slug.lower()
         if not any(k in low for k in d.get("must_contain", [])):
@@ -216,7 +225,63 @@ def discover(cfg, known_urls):
     return sorted(set(found))
 
 
+def report_health(state, failures, checked_labels):
+    """Tell the user when a source starts failing and when it comes back.
+
+    Without this, a blocked storefront and a calm market produce the exact
+    same experience: nothing on your phone.
+    """
+    prev_bad = set(state.get("_failing", []))
+    now_bad = set(failures)
+
+    started = sorted(now_bad - prev_bad)
+    recovered = sorted((prev_bad - now_bad) & set(checked_labels))
+
+    if started:
+        lines = ["⚠️ <b>hoopwatch — source not reachable</b>", ""]
+        for lbl in started:
+            lines.append(f"• {lbl} — {failures[lbl]}")
+        lines.append("")
+        lines.append("These are not being checked. A box could go buyable "
+                     "there and you would not hear about it.")
+        notify("\n".join(lines))
+
+    if recovered:
+        notify("✅ <b>hoopwatch — back online</b>\n\n"
+               + "\n".join(f"• {lbl}" for lbl in recovered))
+
+    state["_failing"] = sorted(now_bad)
+
+
+def maybe_heartbeat(state, n_products, n_failing):
+    """A weekly note proving the whole chain works, so quiet reads as quiet."""
+    last = state.get("_heartbeat")
+    now = now_utc()
+    if last:
+        try:
+            prev = datetime.datetime.fromisoformat(last)
+            if (now - prev).days < HEARTBEAT_DAYS:
+                return
+        except ValueError:
+            pass
+    msg = ["💤 <b>hoopwatch weekly check-in</b>", "",
+           f"Watching {n_products} product(s). Nothing buyable at or near "
+           f"MSRP right now."]
+    if n_failing:
+        msg.append(f"{n_failing} source(s) unreachable — see earlier warning.")
+    msg.append("")
+    msg.append("You'll get a BUY alert the moment that changes.")
+    notify("\n".join(msg))
+    state["_heartbeat"] = now.isoformat(timespec="seconds")
+
+
 def main():
+    if TEST_MODE:
+        ok = notify("🏀 <b>hoopwatch test</b>\n\nIf you're reading this on "
+                    "your phone, alerts work. Nothing else to do.")
+        log(f"test message sent: {ok}")
+        return 0 if ok else 1
+
     cfg = load_json(CONFIG_FILE, {})
     state = load_json(STATE_FILE, {})
     s = cfg.get("settings", {})
@@ -228,13 +293,24 @@ def main():
     products = list(cfg.get("products", []))
     known = {src["url"] for p in products for src in p["sources"]}
 
+    failures = {}
+    checked_labels = []
+
     # Launches listed as live on the index are trusted over page-text
     # guessing. Anything not on that list cannot be a live EQL window.
-    live_now = set(scan_live_index(cfg))
+    index_url = cfg.get("discovery", {}).get("index_url", "")
+    index_html, index_err = fetch(index_url) if index_url else (None, None)
+    checked_labels.append("Topps launch index")
+    if index_err:
+        failures["Topps launch index"] = index_err
+        live_now = set()
+    else:
+        # Reuse the HTML already in hand rather than fetching the index twice.
+        live_now = set(_live_from_html(index_html, cfg))
     log(f"Live basketball launches on index: {len(live_now)}")
 
     # Auto-pick-up of new basketball launches, so the list doesn't go stale.
-    for url in discover(cfg, known):
+    for url in discover(cfg, known, index_html):
         slug = url.rsplit("/", 1)[-1].replace("-", " ").title()
         log(f"NEW product discovered: {slug}")
         products.append({"name": f"{slug} (auto)", "msrp": None,
@@ -251,8 +327,11 @@ def main():
 
         readings = []
         for src in p["sources"]:
-            html = fetch(src["url"])
+            label = f"{name} :: {src['label']}"
+            checked_labels.append(label)
+            html, err = fetch(src["url"])
             if html is None:
+                failures[label] = err
                 continue
             text = clean(html)
             avail, why = is_available(text)
@@ -268,12 +347,22 @@ def main():
                              "price": price, "how": how})
             log(f"    {src['label']}: avail={avail} ({why}) {money(price)} [{how}]")
 
-        # Topps direct price defines MSRP when we don't already know it.
+        # Topps direct price defines MSRP when we don't already know it —
+        # but only from structured product data. A number scraped out of
+        # visible text might be shipping, a bundle, or a neighbouring item,
+        # and a wrong MSRP silently bends every buy limit built on top of it.
         for r in readings:
             if r["role"] == "msrp" and r["price"] and msrp is None:
+                if r["how"] != "structured":
+                    log(f"    not learning MSRP from {r['how']} — "
+                        f"{money(r['price'])} unverified")
+                    continue
                 if lo_msrp <= r["price"] <= hi_msrp:
                     msrp = r["price"]
                     log(f"    learned MSRP = {money(msrp)}")
+
+        if msrp is None:
+            log("    no trusted MSRP — reseller limits can't be applied")
 
         if msrp is not None and not (lo_msrp <= msrp <= hi_msrp):
             log(f"    skip — MSRP {money(msrp)} outside ${lo_msrp}-${hi_msrp}")
@@ -323,9 +412,43 @@ def main():
 
     for a in alerts:
         notify(a)
+
+    report_health(state, failures, checked_labels)
+    if not alerts:
+        maybe_heartbeat(state, len(products), len(failures))
+
     save_json(STATE_FILE, state)
-    log(f"Done. {len(alerts)} buy alert(s).")
+    log(f"Done. {len(alerts)} buy alert(s), {len(failures)} unreachable source(s).")
     return 0
+
+
+def _live_from_html(html, cfg):
+    """Live-launch links, read from index HTML we already have."""
+    if not html:
+        return []
+    d = cfg.get("discovery", {})
+    low_html = html.lower()
+    for cutoff in ("past launches", "closed launches", "previous launches",
+                   "recent launches"):
+        i = low_html.find(cutoff)
+        if i != -1:
+            html = html[:i]
+            low_html = low_html[:i]
+            break
+    if "live launches" not in low_html:
+        return []
+    keep = set(d.get("must_contain", []))
+    drop = set(d.get("must_not_contain", []))
+    live = []
+    for m in LAUNCH_HREF.finditer(html):
+        slug = m.group(1)
+        low = slug.lower()
+        if keep and not any(k in low for k in keep):
+            continue
+        if any(k in low for k in drop):
+            continue
+        live.append("https://launches.topps.com" + slug)
+    return sorted(set(live))
 
 
 if __name__ == "__main__":
