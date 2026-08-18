@@ -1,4 +1,9 @@
 {
+  "2025 26 Topps Definitive Basketball Hobby Box Pre Order (auto) :: Topps (official)": {
+    "available": true,
+    "buy": false,
+    "price": 7499.99
+  },
   "Topps Chrome Black Basketball \u2014 Hobby :: Topps (official)": {
     "available": false,
     "buy": false,
@@ -14,6 +19,11 @@
     "buy": false,
     "price": 549.99
   },
+  "Topps Chrome Update Basketball \u2014 Jumbo :: Dave & Adam's": {
+    "available": true,
+    "buy": false,
+    "price": 2264.95
+  },
   "Topps Chrome Update Basketball \u2014 Jumbo :: MyExtraCards": {
     "available": true,
     "buy": false,
@@ -24,6 +34,14 @@
     "buy": false,
     "price": 1099.99
   },
+  "_discovered": [
+    "https://launches.topps.com/en-US/launch/2025-26-topps-definitive-basketball-hobby-box-pre-order"
+  ],
+  "_failing": [
+    "Topps Chrome Update Basketball \u2014 Hobby :: Dave & Adam's",
+    "Topps Chrome Update Basketball \u2014 Hobby :: Steel City"
+  ],
+  "_heartbeat": "2026-08-18T15:49:35+00:00",
   "_learned_msrp": {
     "Topps Chrome Black Basketball \u2014 Hobby": 349.99,
     "Topps Chrome Black Basketball \u2014 Sealed Case": 2799.99
