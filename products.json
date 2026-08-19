@@ -1,12 +1,21 @@
 {
-  "_comment": "Retail boxes only — Mega and Value/Blaster from Walmart and Target. Hobby and Jumbo removed. msrp values are set by hand; correct them if wrong, since the buy ceiling is built on them.",
+  "_comment": "Retail boxes (Walmart/Target) plus Jumbo from hobby sellers. msrp values are set by hand — they set the buy ceiling, so correct them if wrong.",
   "settings": {
     "msrp_min": 20,
-    "msrp_max": 400,
+    "msrp_max": 4000,
     "max_over_msrp_pct": 15,
     "min_reseller_gap_pct": 20
   },
   "products": [
+    {
+      "name": "Topps Chrome Update Basketball — Jumbo",
+      "msrp": 1080.00,
+      "sources": [
+        {"label": "Topps (official)", "url": "https://launches.topps.com/en-US/launch/2025-26-topps-chromer-updates-basketball-jumbo-box", "role": "msrp"},
+        {"label": "MyExtraCards", "url": "https://myextracards.com/shop/2025-26-topps-chrome-update-series-basketball-jumbo-box-pre-sale/", "role": "market"},
+        {"label": "Dave & Adam's", "url": "https://www.dacardworld.com/sports-cards/2025-26-topps-chrome-update-basketball-hobby-jumbo-box", "role": "market"}
+      ]
+    },
     {
       "name": "Topps Chrome Update Basketball — Mega",
       "msrp": 59.99,
