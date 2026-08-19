@@ -44,6 +44,14 @@ TEST_MODE = os.environ.get("HOOPWATCH_TEST", "").strip() == "1"
 
 HEARTBEAT_DAYS = 7
 
+# Blocking is flaky, so treat a single refusal as noise. A source must fail
+# this many checks in a row before it's called down, and succeed this many in
+# a row before it's called back. COOLDOWN_HOURS caps how often health news of
+# any kind can reach your phone.
+FAIL_STREAK = 3
+OK_STREAK = 2
+COOLDOWN_HOURS = 12
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
 
@@ -226,31 +234,66 @@ def discover(cfg, known_urls, index_html):
 
 
 def report_health(state, failures, checked_labels):
-    """Tell the user when a source starts failing and when it comes back.
+    """Tell the user when a source is genuinely down, and when it's genuinely
+    back. Not every flicker.
 
-    Without this, a blocked storefront and a calm market produce the exact
-    same experience: nothing on your phone.
+    Storefront blocking is intermittent by nature: the same site refuses one
+    request and serves the next. Alerting on every change turned that into a
+    pager. So a source has to fail FAIL_STREAK times in a row before it counts
+    as down, and succeed OK_STREAK times in a row before it counts as back —
+    and no health message goes out more than once per COOLDOWN_HOURS.
     """
-    prev_bad = set(state.get("_failing", []))
-    now_bad = set(failures)
+    streaks = state.setdefault("_streaks", {})
+    reported = set(state.get("_reported_down", []))
+    now = now_utc()
 
-    started = sorted(now_bad - prev_bad)
-    recovered = sorted((prev_bad - now_bad) & set(checked_labels))
+    started, recovered = [], []
+
+    for lbl in checked_labels:
+        st = streaks.setdefault(lbl, {"fail": 0, "ok": 0})
+        if lbl in failures:
+            st["fail"] += 1
+            st["ok"] = 0
+            if st["fail"] >= FAIL_STREAK and lbl not in reported:
+                started.append(lbl)
+                reported.add(lbl)
+        else:
+            st["ok"] += 1
+            st["fail"] = 0
+            if st["ok"] >= OK_STREAK and lbl in reported:
+                recovered.append(lbl)
+                reported.discard(lbl)
+
+    state["_reported_down"] = sorted(reported)
+
+    if not started and not recovered:
+        return
+
+    last = state.get("_last_health")
+    if last:
+        try:
+            if (now - datetime.datetime.fromisoformat(last)).total_seconds() \
+                    < COOLDOWN_HOURS * 3600:
+                log("  health change held back — inside cooldown")
+                return
+        except ValueError:
+            pass
 
     if started:
         lines = ["⚠️ <b>hoopwatch — source not reachable</b>", ""]
-        for lbl in started:
+        for lbl in sorted(started):
             lines.append(f"• {lbl} — {failures[lbl]}")
         lines.append("")
-        lines.append("These are not being checked. A box could go buyable "
-                     "there and you would not hear about it.")
+        lines.append(f"Failed {FAIL_STREAK} checks straight. Not being "
+                     f"checked — a box could go buyable there and you "
+                     f"would not hear about it.")
         notify("\n".join(lines))
 
     if recovered:
         notify("✅ <b>hoopwatch — back online</b>\n\n"
-               + "\n".join(f"• {lbl}" for lbl in recovered))
+               + "\n".join(f"• {lbl}" for lbl in sorted(recovered)))
 
-    state["_failing"] = sorted(now_bad)
+    state["_last_health"] = now.isoformat(timespec="seconds")
 
 
 def maybe_heartbeat(state, n_products, n_failing):
