@@ -100,6 +100,26 @@ SOLD_OUT = ["sold out", "out of stock", "item isn't available", "notify me",
 BUYABLE = ["add to cart", "buy now", "enter now", "enter launch",
            "enter for a chance", "add to bag", "cancel my entry"]
 
+# Some storefronts refuse a plain urllib request no matter what headers it
+# carries — browser-shaped headers were already tried here and Dave & Adam's
+# kept returning 403. A reader service renders the page and hands back plain
+# text, which does get through. Only used as a fallback, and only for the
+# domains listed, so a normal fetch is never routed off-site.
+PROXY_PREFIX = "https://r.jina.ai/"
+PROXY_DOMAINS = ("dacardworld.com", "steelcitycollectibles.com")
+
+# Reader output is markdown, and a reseller product page carries dozens of
+# unrelated products' prices. On the Jumbo page the cheapest figure in range
+# is $14.95 — a free-shipping threshold — while the box itself is $2,264.95.
+# Taking the cheapest number would have reported a $2,200 box as buyable at
+# fifteen dollars. Only a figure sitting behind a price label counts.
+ANCHOR_PRICE = re.compile(
+    r"(?:your|our|sale|item)?\s*price[^0-9$]{0,20}"
+    r"\$\s?([0-9][0-9,]*\.?[0-9]{0,2})", re.I)
+
+# Marks text that came back through the reader rather than from the site.
+PROXY_MARK = "Markdown Content:"
+
 
 def log(m):
     ts = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
@@ -129,7 +149,27 @@ def fetch(url, retries=3):
 
     Returning the reason instead of swallowing it is what makes a blocked
     site distinguishable from a quiet one further up.
+
+    A direct request is always tried first. Only if that fails, and only for
+    the known-blocking domains, is the reader fallback used — so a site that
+    is genuinely down still reports as down instead of quietly succeeding
+    through a third party.
     """
+    html, err = _direct_fetch(url, retries)
+    if html is not None:
+        return html, None
+    if not any(d in url for d in PROXY_DOMAINS):
+        return None, err
+    log(f"    {err} — retrying through reader")
+    html, perr = _direct_fetch(PROXY_PREFIX + url, retries=2)
+    if html is not None:
+        log("    reader succeeded")
+        return html, None
+    return None, f"{err}, reader {perr}"
+
+
+def _direct_fetch(url, retries=3):
+    """One plain request, browser-shaped headers, no fallback."""
     last = None
     for i in range(retries):
         try:
@@ -169,6 +209,16 @@ def to_f(s):
 
 def extract_price(html, text, lo, hi):
     """Return (price, how). Structured data first, banded text second."""
+    # Reader output has no JSON-LD and no meta tags, so the generic text scan
+    # would fall through to the cheapest number on a crowded page. Require a
+    # labelled figure instead, and report none rather than guess — a market
+    # source with no price simply cannot trigger a buy.
+    if PROXY_MARK in html[:2000]:
+        for m in ANCHOR_PRICE.finditer(html):
+            v = to_f(m.group(1))
+            if v is not None and lo <= v <= hi:
+                return v, "labelled"
+        return None, "none"
     for rx in (JSONLD_PRICE, META_PRICE):
         for m in rx.finditer(html):
             v = to_f(m.group(1))
