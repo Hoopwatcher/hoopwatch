@@ -1,7 +1,7 @@
 {
-  "_comment": "Basketball boxes only. msrp: null means 'learn it from Topps' own store' — whatever Topps charges IS msrp. Set it manually only if you know better.",
+  "_comment": "Basketball boxes only. msrp: null means 'learn it from Topps' own store' — whatever Topps charges IS msrp. Set it manually only if you know better. Retail boxes (Mega/Value) are Walmart/Target items and are much cheaper than Hobby/Jumbo, which is why msrp_min is low.",
   "settings": {
-    "msrp_min": 300,
+    "msrp_min": 40,
     "msrp_max": 4000,
     "max_over_msrp_pct": 15,
     "min_reseller_gap_pct": 20
@@ -21,8 +21,26 @@
       "msrp": 549.99,
       "sources": [
         {"label": "Topps (official)", "url": "https://launches.topps.com/en-US/launch/2025-26-topps-chromer-updates-basketball-hobby-box", "role": "msrp"},
+        {"label": "Target", "url": "https://www.target.com/p/2025-26-topps-chrome-update-series-basketball-hobby-box/-/A-1013038583", "role": "market"},
         {"label": "Dave & Adam's", "url": "https://www.dacardworld.com/sports-cards/2025-26-topps-chrome-update-basketball-hobby-box", "role": "market"},
         {"label": "Steel City", "url": "https://www.steelcitycollectibles.com/i/2025-26-topps-chrome-update-series-basketball-hobby-box", "role": "market"}
+      ]
+    },
+    {
+      "name": "Topps Chrome Update Basketball — Mega (retail)",
+      "msrp": 59.99,
+      "sources": [
+        {"label": "Target", "url": "https://www.target.com/p/2025-26-topps-nba-chrome-update-series-basketball-trading-card-mega-box/-/A-1012663799", "role": "market"},
+        {"label": "Walmart", "url": "https://www.walmart.com/ip/2025-26-Topps-Chrome-Update-Basketball-Factory-Sealed-Mega-Box/20592405840", "role": "market"}
+      ]
+    },
+    {
+      "name": "Topps Chrome Update Basketball — Value/Blaster (retail)",
+      "msrp": 39.99,
+      "sources": [
+        {"label": "Target", "url": "https://www.target.com/p/2025-26-topps-nba-chrome-update-series-basketball-trading-card-value-box/-/A-1012663802", "role": "market"},
+        {"label": "Target (blaster)", "url": "https://www.target.com/p/2025-26-topps-chrome-update-series-basketball-blaster-box/-/A-1013037961", "role": "market"},
+        {"label": "Walmart", "url": "https://www.walmart.com/ip/2025-26-Topps-Chrome-Update-Basketball-Factory-Sealed-Value-Box/20547720280", "role": "market"}
       ]
     },
     {
