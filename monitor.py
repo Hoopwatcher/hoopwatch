@@ -120,6 +120,64 @@ ANCHOR_PRICE = re.compile(
 # Marks text that came back through the reader rather than from the site.
 PROXY_MARK = "Markdown Content:"
 
+# Walmart item number, taken from the end of the product web address.
+WM_ITEM_ID = re.compile(r"/(\d{6,})(?:\?|$)")
+
+# The page embeds its data as JSON in a script tag. Reading the item's own
+# entry is the only reliable way to get its price: a Walmart product page
+# also carries prices for "similar items", and a plain scan picks up
+# whichever appears first. That is how a $159.95 box reported as $69.97 —
+# the $69.97 belonged to a different product further down the page.
+WM_BLOB = re.compile(
+    r'<script[^>]+id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
+
+
+def _wm_find_item(node, item_id):
+    """Depth-first search for the entry whose item number matches the URL."""
+    if isinstance(node, list):
+        for child in node:
+            hit = _wm_find_item(child, item_id)
+            if hit is not None:
+                return hit
+        return None
+    if not isinstance(node, dict):
+        return None
+    if node.get("usItemId") == item_id and isinstance(
+            node.get("priceInfo"), dict):
+        return node
+    for child in node.values():
+        hit = _wm_find_item(child, item_id)
+        if hit is not None:
+            return hit
+    return None
+
+
+def walmart_reading(html, url):
+    """Return (price, seller, seller_type) for a Walmart product page.
+
+    Any of them may be None when the page can't be read. Callers treat that
+    as "no usable price" rather than falling back to a looser guess, because
+    a loose guess here is what produced a wrong alert in the first place.
+    """
+    m = WM_ITEM_ID.search(url.split("#")[0])
+    blob = WM_BLOB.search(html or "")
+    if not m or not blob:
+        return None, None, None
+    try:
+        data = json.loads(blob.group(1))
+    except json.JSONDecodeError:
+        return None, None, None
+    item = _wm_find_item(data, m.group(1))
+    if item is None:
+        return None, None, None
+    current = item.get("priceInfo", {}).get("currentPrice") or {}
+    price = current.get("price")
+    seller = item.get("sellerDisplayName") or item.get("sellerName")
+    # EXTERNAL means a marketplace seller listing on Walmart's site, not
+    # Walmart. Those are resale prices and never MSRP, so they are dropped.
+    return (price if isinstance(price, (int, float)) else None,
+            seller, item.get("sellerType"))
+
 
 def log(m):
     ts = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
@@ -436,6 +494,17 @@ def main():
                     avail, why = False, "not listed as live"
             # Band generously; msrp filtering happens after.
             price, how = extract_price(html, text, lo_msrp * 0.5, hi_msrp * 3)
+            if "walmart.com" in src["url"]:
+                wm_price, wm_seller, wm_type = walmart_reading(html, src["url"])
+                if wm_type == "EXTERNAL":
+                    log(f"    {src['label']}: skipped — sold by "
+                        f"{wm_seller}, not Walmart")
+                    continue
+                if wm_price is None:
+                    log(f"    {src['label']}: skipped — "
+                        f"couldn't read this item's own price")
+                    continue
+                price, how = wm_price, "item"
             readings.append({**src, "available": avail, "why": why,
                              "price": price, "how": how})
             log(f"    {src['label']}: avail={avail} ({why}) {money(price)} [{how}]")
