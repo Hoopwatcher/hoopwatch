@@ -17,7 +17,7 @@
   "Topps Chrome Update Basketball \u2014 Hobby :: Dave & Adam's": {
     "available": true,
     "buy": false,
-    "price": 1129.95
+    "price": 1169.95
   },
   "Topps Chrome Update Basketball \u2014 Hobby :: Steel City": {
     "available": false,
@@ -58,5 +58,44 @@
   "_learned_msrp": {
     "Topps Chrome Black Basketball \u2014 Hobby": 349.99,
     "Topps Chrome Black Basketball \u2014 Sealed Case": 2799.99
+  },
+  "_reported_down": [],
+  "_streaks": {
+    "Topps Chrome Black Basketball \u2014 Hobby :: Topps (official)": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps Chrome Black Basketball \u2014 Sealed Case :: Topps (official)": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps Chrome Update Basketball \u2014 Hobby :: Dave & Adam's": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps Chrome Update Basketball \u2014 Hobby :: Steel City": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps Chrome Update Basketball \u2014 Hobby :: Topps (official)": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps Chrome Update Basketball \u2014 Jumbo :: Dave & Adam's": {
+      "fail": 1,
+      "ok": 0
+    },
+    "Topps Chrome Update Basketball \u2014 Jumbo :: MyExtraCards": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps Chrome Update Basketball \u2014 Jumbo :: Topps (official)": {
+      "fail": 0,
+      "ok": 1
+    },
+    "Topps launch index": {
+      "fail": 0,
+      "ok": 1
+    }
   }
 }
