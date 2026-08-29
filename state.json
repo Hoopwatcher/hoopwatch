@@ -101,11 +101,11 @@
   "_streaks": {
     "Topps Chrome Basketball \u2014 Mega (flagship) :: Target": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps Chrome Basketball \u2014 Mega (flagship) :: Walmart": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps Chrome Black Basketball \u2014 Hobby :: Topps (official)": {
       "fail": 0,
@@ -128,40 +128,40 @@
       "ok": 1
     },
     "Topps Chrome Update Basketball \u2014 Jumbo :: Dave & Adam's": {
-      "fail": 0,
-      "ok": 1
+      "fail": 1,
+      "ok": 0
     },
     "Topps Chrome Update Basketball \u2014 Jumbo :: MyExtraCards": {
       "fail": 0,
-      "ok": 214
+      "ok": 215
     },
     "Topps Chrome Update Basketball \u2014 Jumbo :: Topps (official)": {
       "fail": 0,
-      "ok": 214
+      "ok": 215
     },
     "Topps Chrome Update Basketball \u2014 Mega :: Target": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps Chrome Update Basketball \u2014 Mega :: Walmart": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps Chrome Update Basketball \u2014 Value/Blaster :: Target (blaster)": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps Chrome Update Basketball \u2014 Value/Blaster :: Target (value)": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps Chrome Update Basketball \u2014 Value/Blaster :: Walmart": {
       "fail": 0,
-      "ok": 213
+      "ok": 214
     },
     "Topps launch index": {
       "fail": 0,
-      "ok": 214
+      "ok": 215
     }
   }
 }
