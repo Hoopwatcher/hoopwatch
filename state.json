@@ -42,7 +42,7 @@
   "Topps Chrome Update Basketball \u2014 Jumbo :: Dave & Adam's": {
     "available": false,
     "buy": false,
-    "price": 69.95
+    "price": 65.95
   },
   "Topps Chrome Update Basketball \u2014 Jumbo :: MyExtraCards": {
     "available": false,
@@ -99,11 +99,11 @@
   "_streaks": {
     "Topps Chrome Basketball \u2014 Mega (flagship) :: Target": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps Chrome Basketball \u2014 Mega (flagship) :: Walmart": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps Chrome Black Basketball \u2014 Hobby :: Topps (official)": {
       "fail": 0,
@@ -127,39 +127,39 @@
     },
     "Topps Chrome Update Basketball \u2014 Jumbo :: Dave & Adam's": {
       "fail": 0,
-      "ok": 147
+      "ok": 148
     },
     "Topps Chrome Update Basketball \u2014 Jumbo :: MyExtraCards": {
       "fail": 0,
-      "ok": 1882
+      "ok": 1883
     },
     "Topps Chrome Update Basketball \u2014 Jumbo :: Topps (official)": {
       "fail": 0,
-      "ok": 857
+      "ok": 858
     },
     "Topps Chrome Update Basketball \u2014 Mega :: Target": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps Chrome Update Basketball \u2014 Mega :: Walmart": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps Chrome Update Basketball \u2014 Value/Blaster :: Target (blaster)": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps Chrome Update Basketball \u2014 Value/Blaster :: Target (value)": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps Chrome Update Basketball \u2014 Value/Blaster :: Walmart": {
       "fail": 0,
-      "ok": 1881
+      "ok": 1882
     },
     "Topps launch index": {
       "fail": 0,
-      "ok": 857
+      "ok": 858
     }
   }
 }
